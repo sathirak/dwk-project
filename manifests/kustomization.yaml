@@ -17,3 +17,11 @@ resources:
   - todo-backend/service.yml
   - postgres/statefulset.yml
   - postgres/service.yml
+
+images:
+  - name: todo
+    newName: gcr.io/PROJECT_ID/todo
+    newTag: GITHUB_SHA
+  - name: todo-backend
+    newName: gcr.io/PROJECT_ID/todo-backend
+    newTag: GITHUB_SHA
