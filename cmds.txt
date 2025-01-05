@@ -1,0 +1,12 @@
+# Create GKE cluster
+gcloud container clusters create dwk-cluster --zone=europe-north1-b --cluster-version=1.29 --disk-size=32 --num-nodes=3 --machine-type=e2-micro
+
+# Delete GKE cluster
+gcloud container clusters delete dwk-cluster --zone=europe-north1-b
+
+export SOPS_AGE_KEY_FILE=$(pwd)/key.txt
+
+sops --encrypt \
+    --age age1n76yj5wawhxrcu8ck7324u459t5tph2vcj7gymju85nt2xhm3dzqzl3hxf \
+    --encrypted-regex '^(data)$' \
+    ./secret.yml > secret.enc.yml

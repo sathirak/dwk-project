@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dwk-project
+  name: todo-dep
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo
+  template:
+    metadata:
+      labels:
+        app: todo
+    spec:
+      volumes:
+        - name: image-cache
+          persistentVolumeClaim:
+            claimName: shared-claim
+      containers:
+        - name: todo
+          image: sathirak/todo:10
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: image-cache
+              mountPath: /app/cache

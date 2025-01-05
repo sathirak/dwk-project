@@ -1,0 +1,76 @@
+name: Build and Deploy Applications
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-b  
+  TODO_IMAGE: todo
+  TODO_BACKEND_IMAGE: todo-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: google-github-actions/auth@v2
+      with:
+        credentials_json: '${{ secrets.GKE_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker
+      run: gcloud --quiet auth configure-docker
+
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v2
+      with:
+        cluster_name: ${{ env.GKE_CLUSTER }}
+        location: ${{ env.GKE_ZONE }}
+        project_id: ${{ env.PROJECT_ID }}
+
+    # Build and push Todo service
+    - name: Build Todo
+      run: |
+        docker build \
+          --tag "gcr.io/$PROJECT_ID/$TODO_IMAGE:$GITHUB_SHA" \
+          -f todo/Dockerfile ./todo
+
+    - name: Push Todo
+      run: docker push "gcr.io/$PROJECT_ID/$TODO_IMAGE:$GITHUB_SHA"
+
+    # Build and push Todo Backend service
+    - name: Build Todo Backend
+      run: |
+        docker build \
+          --tag "gcr.io/$PROJECT_ID/$TODO_BACKEND_IMAGE:$GITHUB_SHA" \
+          -f todo-backend/Dockerfile ./todo-backend
+
+    - name: Push Todo Backend
+      run: docker push "gcr.io/$PROJECT_ID/$TODO_BACKEND_IMAGE:$GITHUB_SHA"
+
+    # Deploy using Kustomize
+    - name: Set up Kustomize
+      uses: imranismail/setup-kustomize@v2.1.0
+
+    - name: Update Kustomize images
+      working-directory: ./manifests
+      run: |
+        kustomize edit set image todo=gcr.io/$PROJECT_ID/$TODO_IMAGE:$GITHUB_SHA
+        kustomize edit set image todo-backend=gcr.io/$PROJECT_ID/$TODO_BACKEND_IMAGE:$GITHUB_SHA
+
+    - name: Deploy
+      working-directory: ./manifests
+      run: |
+        kustomize build . | kubectl apply -f -
+        kubectl rollout status deployment/todo
+        kubectl rollout status deployment/todo-backend
+        kubectl get services -o wide
