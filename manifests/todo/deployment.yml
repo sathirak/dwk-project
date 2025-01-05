@@ -20,13 +20,6 @@ spec:
       containers:
         - name: todo
           image: todo
-          resources:
-            requests:
-              cpu: 100m
-              memory: 150Mi
-            limits:
-              cpu: 200m
-              memory: 300Mi
           ports:
             - containerPort: 3000
           volumeMounts:
